@@ -1,0 +1,80 @@
+Here's the full data quality report:
+
+---
+
+## ✅ Data Verification Report
+
+### 1. 🔑 Primary Key Uniqueness — `transactions_id`
+**PASS.** All 2,000 transaction IDs are unique. No duplicates found.
+
+---
+
+### 2. 🔁 Duplicate Rows
+**PASS.** Zero fully duplicate rows exist in the dataset.
+
+---
+
+### 3. 🕳️ Null Values — *Needs Attention*
+**13 rows** contain nulls across two distinct patterns:
+
+| Pattern | Affected Rows | Columns with Nulls | Likely Cause |
+|---|---|---|---|
+| **Missing age only** | 10 rows | `age` | Age not recorded at checkout |
+| **Missing transaction data** | 3 rows | `quantiy`, `price_per_unit`, `cogs`, `total_sale` | Incomplete/cancelled transactions |
+
+The 3 rows missing all financial data (transactions `679`, `746`, `1225`) are essentially **empty sales records** and should either be imputed or excluded from aggregation queries.
+
+---
+
+### 4. 📅 Date & Time Format
+**PASS.** Both `sale_date` (YYYY-MM-DD) and `sale_time` (HH:MM:SS) parse cleanly across all rows. Date range spans exactly **2022–2023**.
+
+---
+
+### 5. 🏷️ Categorical Consistency
+**PASS.** No whitespace padding, no case variants, no unexpected values.
+
+- `gender`: `Female` (1,020) | `Male` (980)
+- `category`: `Clothing` (702) | `Electronics` (684) | `Beauty` (614)
+
+---
+
+### 6. 🔢 Numeric Ranges
+**PASS.** No negative values or zeros found in any numeric column.
+
+| Column | Min | Max |
+|---|---|---|
+| `age` | 18 | 64 |
+| `quantiy` | 1 | 4 |
+| `price_per_unit` | 25 | 500 |
+| `cogs` | 6.25 | 620 |
+| `total_sale` | 25 | 2,000 |
+
+> ⚠️ Note: `cogs` (max 620) can exceed `price_per_unit` (max 500) in some rows — this may warrant business-level review but isn't a data error per se.
+
+---
+
+### 7. ✔️ Business Logic: `total_sale = quantiy × price_per_unit`
+**PASS.** All 1,997 complete rows satisfy this rule perfectly — zero mismatches.
+
+---
+
+### 8. ✏️ Column Name Typo
+**Minor issue:** The column `quantiy` is misspelled (should be `quantity`). This won't affect query results but worth noting.
+
+---
+
+### 🧾 Summary
+
+| Check | Status |
+|---|---|
+| Primary key uniqueness | ✅ Pass |
+| Duplicate rows | ✅ Pass |
+| Null values | ⚠️ 13 rows affected |
+| Date/time formats | ✅ Pass |
+| Categorical consistency | ✅ Pass |
+| Numeric ranges | ✅ Pass |
+| Business logic integrity | ✅ Pass |
+| Column naming | ⚠️ Typo in `quantiy` |
+
+The dataset is **largely clean and reliable**. The only things to keep in mind when querying are the **13 rows with nulls** — particularly the 3 rows with no financial data, which should be excluded from sales aggregations using `WHERE total_sale IS NOT NULL`. You're good to go! 🟢
