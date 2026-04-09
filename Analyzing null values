@@ -1,0 +1,65 @@
+Based on the two distinct null patterns found, here's the recommended approach for analyzing null values : 
+
+---
+
+## Pattern 1 — Missing `age` only (10 rows)
+
+These rows have complete transaction data. Age is just a customer demographic attribute. The best options:
+
+**Option A — Impute with category average** ✅ Recommended
+Replace the null age with the average age of customers in the same gender group. This preserves all 10 valid transactions.
+
+```sql
+UPDATE retail_sales
+SET age = (
+    SELECT ROUND(AVG(age))
+    FROM retail_sales r2
+    WHERE r2.gender = retail_sales.gender
+    AND r2.age IS NOT NULL
+)
+WHERE age IS NULL;
+```
+
+**Option B — Impute with overall average**
+Simpler, but less precise.
+```sql
+UPDATE retail_sales
+SET age = (SELECT ROUND(AVG(age)) FROM retail_sales WHERE age IS NOT NULL)
+WHERE age IS NULL;
+```
+
+**Option C — Leave as NULL**
+Perfectly acceptable if your queries don't rely on `age`. Just use `WHERE age IS NOT NULL` in age-related queries.
+
+---
+
+## Pattern 2 — Missing all financial columns (3 rows: `679`, `746`, `1225`)
+
+These rows have no `quantiy`, `price_per_unit`, `cogs`, or `total_sale` — they're essentially **empty transaction shells** with no meaningful data to impute. The only valid options are:
+
+**Option A — Delete the rows** ✅ Recommended
+```sql
+DELETE FROM retail_sales
+WHERE quantiy IS NULL
+  AND price_per_unit IS NULL
+  AND total_sale IS NULL;
+```
+
+**Option B — Exclude in queries (non-destructive)**
+Keep the rows but always filter them out in analysis:
+```sql
+-- Add this to every analytical query
+WHERE total_sale IS NOT NULL
+```
+
+---
+
+## Recommendation Summary
+
+| Pattern | Rows | Recommended Action | Why |
+|---|---|---|---|
+| Missing `age` only | 10 | Impute with gender-group average | Valid transactions — don't lose them |
+| Missing all financials | 3 | Delete | No meaningful data to recover |
+
+The **delete + impute** combo is the cleanest path — you end up with 1,997 fully complete rows and no silent nulls distorting aggregations. If you prefer a non-destructive approach, the **exclude in queries** strategy works fine too and is reversible.
+
